@@ -10,6 +10,7 @@
 #include <iomanip>
 #include <cmath>
 #include <numeric>
+#include "ErrorHandler.h"
 
 using json = nlohmann::json;
 using SymEngine::Expression;
@@ -70,7 +71,12 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact = false) {
             return prod;
         }
         if (op == "Divide" || op == "Rational") {
-            return parseAST(ast[1], isRad, preferExact) / parseAST(ast[2], isRad, preferExact);
+            Expression den = parseAST(ast[2], isRad, preferExact);
+            // 主动拦截除以 0
+            if (den == Expression(0)) {
+                throw CalcException(CalcErrorCode::DIV_BY_ZERO, "Division by zero intercepted.");
+            }
+            return parseAST(ast[1], isRad, preferExact) / den;
         }
 
         // ==================== 强制精确：为了消除圆周率等无理数误差，强制将小数转换为分数 ====================
@@ -120,8 +126,24 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact = false) {
         }
         
         if (op == "Factorial") {
-            if (ast.size() == 2) return Expression(SymEngine::gamma((parseAST(ast[1], isRad, true) + Expression(1)).get_basic()));
-            return Expression(SymEngine::symbol("Error"));
+            if (ast.size() == 2) {
+                Expression arg = parseAST(ast[1], isRad, true);
+                
+                // 【修改后的强力拦截】计算其浮点值，拦截所有形式的负整数（如 -3, -3.0, 甚至化简后为 -3 的式子）
+                try {
+                    double val = SymEngine::eval_double(arg);
+                    if (val < 0 && std::floor(val) == val) {
+                        throw CalcException(CalcErrorCode::DOMAIN_ERROR, "Factorial of negative integer intercepted.");
+                    }
+                } catch (...) {
+                    // 如果 eval_double 抛出异常（比如 arg 是未赋值的变量 x ），
+                    // 我们直接忽略，让底层的 Gamma 函数把它当做符号保留即可。
+                }
+                
+                // 正常执行 Gamma 函数（天然支持 0.5! 等小数阶乘）
+                return Expression(SymEngine::gamma((arg + Expression(1)).get_basic()));
+            }
+            throw CalcException(CalcErrorCode::SYNTAX_ERROR, "Invalid Factorial node length.");
         }
         
         if (op == "nCr") {
@@ -304,9 +326,15 @@ static napi_value Calculate(napi_env env, napi_callback_info info) {
         }
         // =========================================================
 
+    } catch (const CalcException& e) {
+        // 捕获自定义的计算异常，并转换为标准前缀回传给 ArkTS
+        result_msg = e.getFrontEndMessage();
+    } catch (const std::exception& e) {
+        // 捕获 SymEngine 引擎内部抛出的标准库异常
+        result_msg = "Error:Domain"; 
     } catch (...) {
-        // 捕获其余所有的 C++ 异常，不让崩溃溢出到 ArkTS 应用层
-        result_msg = "Error";
+        // 兜底
+        result_msg = "Error:Unknown";
     }
     
     napi_value result;
