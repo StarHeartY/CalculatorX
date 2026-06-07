@@ -21,24 +21,52 @@
             }
         }
 
+        /* 核心修复1：全局去除所有默认的点击高亮和聚焦外边框（消除你看到的黑色方框） */
+        * {
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent !important;
+        }
+
         body {
             display: flex;
             flex-direction: column;
-            align-items: flex-end;
+            align-items: flex-end; /* 绝对保留：你原本的靠右对齐 */
             height: 100vh;
             margin: 0;
-            padding: 48px 16px 20px 16px;
+            padding: 48px 16px 20px 16px; /* 绝对保留：你原本的防重合间距 */
             box-sizing: border-box;
-            overflow-y: auto;
-            overflow-x: auto;
-            -webkit-touch-callout: none;
+            overflow: hidden; /* 核心修复2：禁止 body 整体滚动，彻底切断“输入输出一起滑动”的可能 */
             background-color: var(--bg-color);
             transition: background-color 0.3s ease;
         }
 
+        /* 独立的滚动容器：只有内部内容超过屏幕宽度时才产生滚动 */
+        .scroll-wrapper {
+            max-width: 100%; /* 最宽不超过屏幕 */
+            overflow-x: auto; /* 允许超出时横向独立滚动 */
+            overflow-y: hidden;
+            direction: rtl; /* 核心机制：让滚动条初始锁定在最右侧，符合计算器习惯 */
+            scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
+            -webkit-tap-highlight-color: transparent;
+            outline: none;
+        }
+
+        .scroll-wrapper::-webkit-scrollbar {
+            display: none;
+        }
+
+        #input-wrapper {
+            margin-top: auto; /* 绝对保留：你原本的沉底逻辑 */
+        }
+
+        #result-wrapper {
+            margin-top: 8px; /* 绝对保留：你原本的结果间距 */
+        }
+
         math-field {
-            width: fit-content;
-            max-width: 100%;
+            direction: ltr; /* 将公式本身的书写方向纠正回正常的从左到右 */
+            display: inline-block;
             min-width: 40px;
             background-color: transparent;
             border: none;
@@ -46,11 +74,10 @@
             --placeholder-color: var(--text-color);
             --placeholder-opacity: 0.35;
             transition: color 0.3s ease;
-
+            touch-action: pan-x !important; /* 强制允许横向原生滚动 */
         }
 
         #math-input {
-            margin-top: auto;
             font-size: 2.5rem;
         }
 
@@ -66,11 +93,9 @@
         #math-result {
             font-size: 2rem;
             color: var(--result-color);
-            margin-top: 8px;
             opacity: 0;
             transition: opacity 0.2s ease;
-            pointer-events: none;
-            text-align: right;
+            pointer-events: none; /* 结果栏不需要交互 */
         }
 
         #math-result.show {
@@ -80,22 +105,56 @@
 </head>
 
 <body>
-<math-field id="math-input" math-virtual-keyboard-policy="manual"></math-field>
-<math-field id="math-result" read-only></math-field>
+<div class="scroll-wrapper" id="input-wrapper">
+    <math-field id="math-input" math-virtual-keyboard-policy="manual"></math-field>
+</div>
+<div class="scroll-wrapper" id="result-wrapper">
+    <math-field id="math-result" read-only></math-field>
+</div>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const mf = document.getElementById('math-input');
         const resField = document.getElementById('math-result');
 
-        // 清空 MathLive 内置菜单项
+        // 1. 保留原本的菜单拦截
         mf.menuItems = [];
-
-        // 拦截浏览器原生的长按/右键菜单事件
         mf.addEventListener('contextmenu', function(event) {
             event.preventDefault();
             event.stopPropagation();
         });
+
+        // 2. 终极杀招：自定义平滑滚动逻辑（完美解决直接滑动数字的问题）
+        function setupSmoothScroll(mfId, wrapperId) {
+            const field = document.getElementById(mfId);
+            const wrapper = document.getElementById(wrapperId);
+            let startX = 0;
+            let startScrollLeft = 0;
+
+            field.addEventListener('touchstart', function (e) {
+                // 记录手指按下的初始位置和容器当前的滚动距离
+                startX = e.touches[0].clientX;
+                startScrollLeft = wrapper.scrollLeft;
+            }, { capture: true, passive: true });
+
+            field.addEventListener('touchmove', function (e) {
+                const currentX = e.touches[0].clientX;
+                const dx = Math.abs(currentX - startX);
+
+                // 如果水平滑动距离大于 5px，认定为滑动而不是点击
+                if (dx > 5) {
+                    e.stopPropagation(); // 阻断 MathLive 内部的光标拖拽/选中逻辑
+
+                    // 核心修复：既然原生滚动被 MathLive 禁了，我们就用 JS 手动更新容器的滚动条！
+                    // Chromium 在 RTL 模式下，左滑 currentX 变小，差值为正，恰好让 scrollLeft 增加，完美契合滑动直觉
+                    wrapper.scrollLeft = startScrollLeft + (startX - currentX);
+                }
+            }, { capture: true });
+        }
+
+        // 给输入框和结果框分别挂载手动滚动引擎
+        setupSmoothScroll('math-input', 'input-wrapper');
+        setupSmoothScroll('math-result', 'result-wrapper');
 
         mf.focus();
 
