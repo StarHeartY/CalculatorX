@@ -69,8 +69,43 @@ static std::pair<int, int> getMatrixDim(const json& node) {
     }
     return {0, 0}; // 返回 0,0 代表非矩阵节点
 }
-// ================================================================
 
+// ================= 拦截 Giac 结果的数字嗅探器 =================
+static Expression wrapGiacResult(const std::string& rawResult) {
+    bool is_simple_num = true;
+    if (rawResult.empty()) is_simple_num = false;
+    
+    // 检查结果是否纯粹由数字、负号、小数点、除号构成
+    for (char c : rawResult) {
+        if (!isdigit(c) && c != '-' && c != '.' && c != '/') {
+            is_simple_num = false; // 发现字母或反斜杠(如 \pi, x)，说明是代数公式
+            break;
+        }
+    }
+    
+    if (is_simple_num) {
+        try {
+            size_t slash = rawResult.find('/');
+            if (slash != std::string::npos) {
+                // 拦截到了分数，例如 "24/2" 或 "1/3"，将其转化为 SymEngine 原生精确分数
+                long long num = std::stoll(rawResult.substr(0, slash));
+                long long den = std::stoll(rawResult.substr(slash + 1));
+                return Expression(num) / Expression(den);
+            } else if (rawResult.find('.') != std::string::npos) {
+                // 拦截到了浮点数，转化为原生浮点节点
+                return Expression(std::stod(rawResult));
+            } else {
+                // 拦截到了纯整数，例如 "24"
+                return Expression(std::stoll(rawResult));
+            }
+        } catch (...) {
+            // 如果数字大到溢出 c++ 的 long long 极限，安静地降级到黑盒模式
+        }
+    }
+    
+    // 如果是代数式，或者解析失败，按照老规矩套上伪装黑盒
+    return wrapGiacResult(rawResult);
+}
 
 Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS) {
     if (ast.is_number()) {
@@ -405,7 +440,7 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS)
                     throw CalcException(CalcErrorCode::DOMAIN_ERROR, "Invalid arguments for " + giacFunc);
                 }
                 
-                return Expression(SymEngine::symbol("MAGICGIACRESULT" + rawResult));
+                return wrapGiacResult(rawResult);
             }
             throw CalcException(CalcErrorCode::SYNTAX_ERROR, "Invalid format for GCD/LCM/Mod");
         }
@@ -530,7 +565,7 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS)
                 }
                 
                 // 直接装箱返回前端渲染，绕过 SymEngine 解析
-                return Expression(SymEngine::symbol("MAGICGIACRESULT" + rawResult));
+                return wrapGiacResult(rawResult);
             }
             throw CalcException(CalcErrorCode::SYNTAX_ERROR, "Invalid Sum/Product format");
         }
@@ -569,7 +604,7 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS)
                     if (rawResult.size() >= 2 && rawResult.front() == '"' && rawResult.back() == '"') {
                         rawResult = rawResult.substr(1, rawResult.size() - 2);
                     }
-                    return Expression(SymEngine::symbol("MAGICGIACRESULT" + rawResult));
+                    return wrapGiacResult(rawResult);
                 }
             }
             throw CalcException(CalcErrorCode::SYNTAX_ERROR, "Invalid Limit format");
@@ -650,8 +685,7 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS)
                             throw std::runtime_error("Force Numerical Fallback");
                         }
                         
-                        std::string boxedResult = "MAGICGIACRESULT" + rawResult;
-                        return Expression(SymEngine::symbol(boxedResult));
+                        return wrapGiacResult(rawResult);
                         
                     } 
                     // 极速数值积分兜底 (接管了之前的辛普森 1/3)
@@ -695,8 +729,7 @@ Expression parseAST(const json& ast, bool isRad, bool preferExact, bool& hasDMS)
                                 }
                             }
 
-                            std::string boxedResult = "MAGICGIACRESULT" + rawResult;
-                            return Expression(SymEngine::symbol(boxedResult));
+                            return wrapGiacResult(rawResult);
                         } catch (...) {
                             throw CalcException(CalcErrorCode::DOMAIN_ERROR, "Integration bounds invalid or body unresolvable");
                         }
