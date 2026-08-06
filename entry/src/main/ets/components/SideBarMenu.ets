@@ -9,6 +9,7 @@
 import { GroupHeader, ItemDivider, MenuButton, MenuGroup } from './common/MenuComponents';
 import router from '@ohos.router';
 import { RoutePath } from '../utils/CalculatorConfigs';
+import { common, Want } from '@kit.AbilityKit';
 
 @Component
 export struct SideBarMenu {
@@ -171,61 +172,61 @@ export struct SideBarMenu {
                     if (this.onModuleSelect) { this.onModuleSelect('matrix'); }
                   }
                 })
-                ItemDivider()
-                MenuButton({
-                  icon: $r('sys.symbol.data'),
-                  title: '统计分析',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('statistics'); }
-                  }
-                })
+                // ItemDivider()
+                // MenuButton({
+                //   icon: $r('sys.symbol.data'),
+                //   title: '统计分析',
+                //   onClickAction: () => {
+                //     animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+                //     if (this.onModuleSelect) { this.onModuleSelect('statistics'); }
+                //   }
+                // })
               }
             }
             .padding({ left: 16, right: 16, bottom: 12 })
 
             // ====================== 3. 转换 ==========================
-            Column() {
-              GroupHeader({ title: '转换' })
-              MenuGroup() {
-                MenuButton({
-                  icon: $r('sys.symbol.arrow_left_arrow_right'),
-                  title: '单位转换',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('unit'); }
-                  }
-                })
-                ItemDivider()
-                MenuButton({
-                  icon: $r('sys.symbol.gobackward_10'),
-                  title: '进制转换',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('base'); }
-                  }
-                })
-                ItemDivider()
-                MenuButton({
-                  icon: $r('sys.symbol.yuansign_arrow_2_circlepath'),
-                  title: '汇率',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('exchange'); }
-                  }
-                })
-              }
-            }
-            .padding({ left: 16, right: 16, bottom: 12 })
+            // Column() {
+            //   GroupHeader({ title: '转换' })
+            //   MenuGroup() {
+            //     MenuButton({
+            //       icon: $r('sys.symbol.arrow_left_arrow_right'),
+            //       title: '单位转换',
+            //       onClickAction: () => {
+            //         animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+            //         if (this.onModuleSelect) { this.onModuleSelect('unit'); }
+            //       }
+            //     })
+            //     ItemDivider()
+            //     MenuButton({
+            //       icon: $r('sys.symbol.gobackward_10'),
+            //       title: '进制转换',
+            //       onClickAction: () => {
+            //         animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+            //         if (this.onModuleSelect) { this.onModuleSelect('base'); }
+            //       }
+            //     })
+            //     ItemDivider()
+            //     MenuButton({
+            //       icon: $r('sys.symbol.yuansign_arrow_2_circlepath'),
+            //       title: '汇率',
+            //       onClickAction: () => {
+            //         animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+            //         if (this.onModuleSelect) { this.onModuleSelect('exchange'); }
+            //       }
+            //     })
+            //   }
+            // }
+            // .padding({ left: 16, right: 16, bottom: 12 })
 
             // ====================== 4. 参考 ==========================
             Column() {
               GroupHeader({ title: '参考' })
               MenuGroup() {
-                MenuButton({ icon: $r('sys.symbol.doc_plaintext'), title: '公式库', onClickAction: () => { /* TODO */ } })
-                ItemDivider()
-                MenuButton({ icon: $r('sys.symbol.e'), title: '科学常数', onClickAction: () => { /* TODO */ } })
-                ItemDivider()
+                // MenuButton({ icon: $r('sys.symbol.doc_plaintext'), title: '公式库', onClickAction: () => { /* TODO */ } })
+                // ItemDivider()
+                // MenuButton({ icon: $r('sys.symbol.e'), title: '科学常数', onClickAction: () => { /* TODO */ } })
+                // ItemDivider()
                 MenuButton({
                   icon: $r('sys.symbol.questionmark_circle'),
                   title: '帮助',
@@ -234,9 +235,17 @@ export struct SideBarMenu {
                     animateTo({ duration: 350, curve: Curve.Friction }, () => {
                       this.isSidebarOpen = false;
                     });
-                    // 2. 触发系统级路由跳转
-                    router.pushUrl({
-                      url: RoutePath.HELP
+
+                    // 2. 构造隐式 Want，拉起系统自带浏览器打开在线帮助文档
+                    let context = getContext(this) as common.UIAbilityContext;
+                    let want: Want = {
+                      action: 'ohos.want.action.viewData',
+                      entities: ['entity.system.browsable'],
+                      uri: 'https://calcx.startyi.com/docs' // 务必带上 https:// 协议头，确保浏览器能正确解析
+                    };
+
+                    context.startAbility(want).catch((err: Error) => {
+                      // 容错拦截：防止极端情况下设备无浏览器导致的崩溃
                     });
                   }
                 })
