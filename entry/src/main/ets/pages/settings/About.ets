@@ -150,7 +150,7 @@ struct About {
             }
             .padding({top: 32})
 
-            Text('Version 1.1.0 Beta (HarmonyOS)')
+            Text('Version 1.5.1 (HarmonyOS)')
               .fontSize(14)
               .fontColor($r('sys.color.font_tertiary'))
               .margin({ top: 6, bottom: 40 })
