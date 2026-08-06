@@ -16,7 +16,7 @@ import {
   ScrollEffectType,
   hdsMaterial
 } from '@kit.UIDesignKit';
-import { ConfigurationConstant, common } from '@kit.AbilityKit';
+import { ConfigurationConstant, common, Want } from '@kit.AbilityKit';
 import { PreferenceManager } from '../../utils/PreferenceManager';
 import Logger from '../../utils/Logger'
 
@@ -542,12 +542,14 @@ export struct Settings {
                 title: '使用帮助',
                 onClickAction: () => {
                   Logger.info('点击：使用帮助');
-                  router.pushUrl({
-                    url: RoutePath.DOC_VIEWER,
-                    params: {
-                      title: '使用帮助',
-                      url: 'https://calcx.startyi.com/help'
-                    }
+                  let context = getContext(this) as common.UIAbilityContext;
+                  let want: Want = {
+                    action: 'ohos.want.action.viewData',
+                    entities: ['entity.system.browsable'],
+                    uri: 'https://calcx.startyi.com/docs'
+                  };
+                  context.startAbility(want).catch((err: Error) => {
+                    Logger.error(`打开浏览器失败: ${err.message}`);
                   });
                 }
               })
@@ -560,12 +562,14 @@ export struct Settings {
                 title: '隐私政策',
                 onClickAction: () => {
                   Logger.info('点击：隐私政策');
-                  router.pushUrl({
-                    url: RoutePath.DOC_VIEWER,
-                    params: {
-                      title: '隐私政策',
-                      url: 'https://calcx.startyi.com/privacy'
-                    }
+                  let context = getContext(this) as common.UIAbilityContext;
+                  let want: Want = {
+                    action: 'ohos.want.action.viewData',
+                    entities: ['entity.system.browsable'],
+                    uri: 'https://calcx.startyi.com/privacy'
+                  };
+                  context.startAbility(want).catch((err: Error) => {
+                    Logger.error(`打开浏览器失败: ${err.message}`);
                   });
                 }
               })
@@ -578,19 +582,21 @@ export struct Settings {
                 title: '用户协议',
                 onClickAction: () => {
                   Logger.info('点击：用户协议');
-                  router.pushUrl({
-                    url: RoutePath.DOC_VIEWER,
-                    params: {
-                      title: '用户协议',
-                      url: 'https://calcx.startyi.com/agreement'
-                    }
+                  let context = getContext(this) as common.UIAbilityContext;
+                  let want: Want = {
+                    action: 'ohos.want.action.viewData',
+                    entities: ['entity.system.browsable'],
+                    uri: 'https://calcx.startyi.com/agreement'
+                  };
+                  context.startAbility(want).catch((err: Error) => {
+                    Logger.error(`打开浏览器失败: ${err.message}`);
                   });
                 }
               })
 
               ItemDivider()
 
-              // 关于此应用
+              // 关于此应用（保留原有本地路由逻辑）
               MenuButton({
                 icon: $r('sys.symbol.info_circle'),
                 title: '关于此应用',
