@@ -133,7 +133,12 @@ export struct Settings {
   @State startupPageMode: number = 0;
   aboutToAppear() {
     // 页面加载时，通过 PreferenceManager 拿到最新数据赋值给 UI
-    this.startupPageMode = PreferenceManager.get(PreferenceConfigs.KEY_STARTUP_PAGE, 0) as number;
+    const savedStartupPageMode = PreferenceManager.get(PreferenceConfigs.KEY_STARTUP_PAGE, 0) as number;
+    const availableStartupPageModes: number[] = [0, 1, 2, 3, 4, 5, 9];
+    this.startupPageMode = availableStartupPageModes.indexOf(savedStartupPageMode) >= 0 ? savedStartupPageMode : 0;
+    if (this.startupPageMode !== savedStartupPageMode) {
+      PreferenceManager.set(PreferenceConfigs.KEY_STARTUP_PAGE, this.startupPageMode);
+    }
   }
 
   @StorageProp(PreferenceConfigs.KEY_COMBINATION_SELECT) combSelect: number = 1;
@@ -141,6 +146,18 @@ export struct Settings {
 
   private scrollerForScroll: Scroller = new Scroller();
   private menus: HdsNavigationMenuContentOptions = { value: [] };
+
+  // 临时使用系统默认浏览器打开帮助文档
+  private openHelpInBrowser(): void {
+    const context = getContext(this) as common.UIAbilityContext;
+    context.startAbility({
+      action: 'ohos.want.action.viewData',
+      entities: ['entity.system.browsable'],
+      uri: 'https://calcx.startyi.com/docs/'
+    }).catch((err: Error) => {
+      Logger.error(`打开帮助网页失败: ${err.message}`);
+    });
+  }
 
   @State isShowMathSheet: boolean = false;
   @State currentSheetType: string = 'comb';
@@ -400,18 +417,20 @@ export struct Settings {
                   { value: '矩阵与向量' },
                   { value: '函数图像' },
                   { value: '方程求解' },
-                  { value: '统计分析' },
-                  { value: '单位转换' },
-                  { value: '进制转换' },
+                  // 正式包暂时隐藏未开发的启动页选项
+                  // { value: '统计分析' },
+                  // { value: '单位转换' },
+                  // { value: '进制转换' },
                   { value: '汇率' }
                 ])
-                  .selected(this.startupPageMode)
-                  .value(['记忆上次', '基础计算', '科学计算', '矩阵与向量', '函数图像', '方程求解', '统计分析', '单位转换', '进制转换', '汇率'][this.startupPageMode] || '记忆上次')
+                  .selected([0, 2, 1, 3, 4, 5, 9].indexOf(this.startupPageMode))
+                  .value(['记忆上次', '科学计算', '基础计算', '矩阵与向量', '函数图像', '方程求解', '统计分析', '单位转换', '进制转换', '汇率'][this.startupPageMode] || '记忆上次')
                   .font({ size: 14 })
                   .fontColor($r('sys.color.font_primary'))
                   .onSelect((index: number) => {
-                    this.startupPageMode = index;
-                    PreferenceManager.set(PreferenceConfigs.KEY_STARTUP_PAGE, index);
+                    const startupModeMap: number[] = [0, 2, 1, 3, 4, 5, 9];
+                    this.startupPageMode = startupModeMap[index];
+                    PreferenceManager.set(PreferenceConfigs.KEY_STARTUP_PAGE, this.startupPageMode);
                   })
               }
               .width('100%')
@@ -542,13 +561,7 @@ export struct Settings {
                 title: '使用帮助',
                 onClickAction: () => {
                   Logger.info('点击：使用帮助');
-                  router.pushUrl({
-                    url: RoutePath.DOC_VIEWER,
-                    params: {
-                      title: '使用帮助',
-                      url: 'https://calcx.startyi.com/help'
-                    }
-                  });
+                  this.openHelpInBrowser();
                 }
               })
 

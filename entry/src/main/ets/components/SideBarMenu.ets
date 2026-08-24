@@ -7,8 +7,8 @@
  */
 
 import { GroupHeader, ItemDivider, MenuButton, MenuGroup } from './common/MenuComponents';
-import router from '@ohos.router';
-import { RoutePath } from '../utils/CalculatorConfigs';
+import { common } from '@kit.AbilityKit';
+import Logger from '../utils/Logger';
 
 @Component
 export struct SideBarMenu {
@@ -19,6 +19,18 @@ export struct SideBarMenu {
 
   // 用于实时记录手指拖拽的横向偏移量
   @State dragOffsetX: number = 0;
+
+  // 临时使用系统默认浏览器打开帮助文档
+  private openHelpInBrowser(): void {
+    const context = getContext(this) as common.UIAbilityContext;
+    context.startAbility({
+      action: 'ohos.want.action.viewData',
+      entities: ['entity.system.browsable'],
+      uri: 'https://calcx.startyi.com/docs/'
+    }).catch((err: Error) => {
+      Logger.error(`打开帮助网页失败: ${err.message}`);
+    });
+  }
 
   build() {
     Stack({ alignContent: Alignment.TopStart }) {
@@ -171,15 +183,16 @@ export struct SideBarMenu {
                     if (this.onModuleSelect) { this.onModuleSelect('matrix'); }
                   }
                 })
-                ItemDivider()
-                MenuButton({
-                  icon: $r('sys.symbol.data'),
-                  title: '统计分析',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('statistics'); }
-                  }
-                })
+                // 正式包暂时隐藏未开发的统计分析功能
+                // ItemDivider()
+                // MenuButton({
+                //   icon: $r('sys.symbol.data'),
+                //   title: '统计分析',
+                //   onClickAction: () => {
+                //     animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+                //     if (this.onModuleSelect) { this.onModuleSelect('statistics'); }
+                //   }
+                // })
               }
             }
             .padding({ left: 16, right: 16, bottom: 12 })
@@ -188,24 +201,25 @@ export struct SideBarMenu {
             Column() {
               GroupHeader({ title: '转换' })
               MenuGroup() {
-                MenuButton({
-                  icon: $r('sys.symbol.arrow_left_arrow_right'),
-                  title: '单位转换',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('unit'); }
-                  }
-                })
-                ItemDivider()
-                MenuButton({
-                  icon: $r('sys.symbol.gobackward_10'),
-                  title: '进制转换',
-                  onClickAction: () => {
-                    animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
-                    if (this.onModuleSelect) { this.onModuleSelect('base'); }
-                  }
-                })
-                ItemDivider()
+                // 正式包暂时隐藏未开发的单位转换和进制转换功能
+                // MenuButton({
+                //   icon: $r('sys.symbol.arrow_left_arrow_right'),
+                //   title: '单位转换',
+                //   onClickAction: () => {
+                //     animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+                //     if (this.onModuleSelect) { this.onModuleSelect('unit'); }
+                //   }
+                // })
+                // ItemDivider()
+                // MenuButton({
+                //   icon: $r('sys.symbol.gobackward_10'),
+                //   title: '进制转换',
+                //   onClickAction: () => {
+                //     animateTo({ duration: 350, curve: Curve.Friction }, () => { this.isSidebarOpen = false; });
+                //     if (this.onModuleSelect) { this.onModuleSelect('base'); }
+                //   }
+                // })
+                // ItemDivider()
                 MenuButton({
                   icon: $r('sys.symbol.yuansign_arrow_2_circlepath'),
                   title: '汇率',
@@ -222,10 +236,11 @@ export struct SideBarMenu {
             Column() {
               GroupHeader({ title: '参考' })
               MenuGroup() {
-                MenuButton({ icon: $r('sys.symbol.doc_plaintext'), title: '公式库', onClickAction: () => { /* TODO */ } })
-                ItemDivider()
-                MenuButton({ icon: $r('sys.symbol.e'), title: '科学常数', onClickAction: () => { /* TODO */ } })
-                ItemDivider()
+                // 正式包暂时隐藏未开发的公式库和科学常数功能
+                // MenuButton({ icon: $r('sys.symbol.doc_plaintext'), title: '公式库', onClickAction: () => { /* TODO */ } })
+                // ItemDivider()
+                // MenuButton({ icon: $r('sys.symbol.e'), title: '科学常数', onClickAction: () => { /* TODO */ } })
+                // ItemDivider()
                 MenuButton({
                   icon: $r('sys.symbol.questionmark_circle'),
                   title: '帮助',
@@ -234,10 +249,8 @@ export struct SideBarMenu {
                     animateTo({ duration: 350, curve: Curve.Friction }, () => {
                       this.isSidebarOpen = false;
                     });
-                    // 2. 触发系统级路由跳转
-                    router.pushUrl({
-                      url: RoutePath.HELP
-                    });
+                    // 2. 临时使用系统默认浏览器打开帮助网页
+                    this.openHelpInBrowser();
                   }
                 })
               }
